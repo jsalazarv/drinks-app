@@ -10,7 +10,7 @@ import {
   AddIcon,
   RemoveIcon,
 } from '@gluestack-ui/themed';
-import {ScrollView, SafeAreaView, StatusBar} from 'react-native';
+import {ScrollView, SafeAreaView, StatusBar, StyleSheet} from 'react-native';
 import {PintGlass} from 'phosphor-react-native';
 
 const HALF_LITER_PRICE = 30;
@@ -123,7 +123,7 @@ export const DrinkCalculator = () => {
     halfLiterCount * HALF_LITER_PRICE + oneLiterCount * ONE_LITER_PRICE;
 
   return (
-    <SafeAreaView style={{flex: 1, backgroundColor: 'white'}}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
       <Box flex={1} bg="$white">
         <ScrollView>
@@ -207,5 +207,12 @@ export const DrinkCalculator = () => {
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+});
 
 export default DrinkCalculator;
