@@ -12,6 +12,7 @@ import {
 } from '@gluestack-ui/themed';
 import {ScrollView, SafeAreaView, StatusBar, StyleSheet} from 'react-native';
 import {PintGlass} from 'phosphor-react-native';
+import {saveSale, DrinkType} from '../services/sales';
 
 const HALF_LITER_PRICE = 30;
 const ONE_LITER_PRICE = 50;
@@ -102,6 +103,7 @@ const SizeOption = ({
 export const DrinkCalculator = () => {
   const [halfLiterCount, setHalfLiterCount] = useState(0);
   const [oneLiterCount, setOneLiterCount] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleAdd = (size: DrinkSize) => {
     if (size === 'half') {
@@ -121,6 +123,45 @@ export const DrinkCalculator = () => {
 
   const totalAmount =
     halfLiterCount * HALF_LITER_PRICE + oneLiterCount * ONE_LITER_PRICE;
+
+  const handleSaveSale = async () => {
+    if (totalAmount === 0) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const sales = [];
+
+      if (halfLiterCount > 0) {
+        sales.push({
+          drink_type: 'half' as DrinkType,
+          count: halfLiterCount,
+          price: HALF_LITER_PRICE,
+          total: halfLiterCount * HALF_LITER_PRICE,
+        });
+      }
+
+      if (oneLiterCount > 0) {
+        sales.push({
+          drink_type: 'one' as DrinkType,
+          count: oneLiterCount,
+          price: ONE_LITER_PRICE,
+          total: oneLiterCount * ONE_LITER_PRICE,
+        });
+      }
+
+      await saveSale(sales);
+
+      // Reset counters after successful save
+      setHalfLiterCount(0);
+      setOneLiterCount(0);
+    } catch (error) {
+      console.error('Error al guardar la venta:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -193,13 +234,14 @@ export const DrinkCalculator = () => {
             bg="$black"
             size="lg"
             borderRadius="$xl"
-            onPress={() => {}}>
+            onPress={handleSaveSale}
+            isDisabled={totalAmount === 0 || isSaving}>
             <Text
               color="$white"
               fontSize="$lg"
               fontWeight="$bold"
               textTransform="uppercase">
-              Hacer corte
+              {isSaving ? 'Guardando...' : 'Registrar Venta'}
             </Text>
           </Button>
         </Box>
