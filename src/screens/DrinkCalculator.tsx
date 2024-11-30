@@ -4,11 +4,13 @@ import {
   Text,
   VStack,
   Image,
+  InputField,
   HStack,
   Button,
   ButtonIcon,
   AddIcon,
   RemoveIcon,
+  Input,
 } from '@gluestack-ui/themed';
 import {ScrollView, SafeAreaView, StatusBar, StyleSheet} from 'react-native';
 import {PintGlass} from 'phosphor-react-native';
@@ -103,6 +105,8 @@ const SizeOption = ({
 export const DrinkCalculator = () => {
   const [halfLiterCount, setHalfLiterCount] = useState(0);
   const [oneLiterCount, setOneLiterCount] = useState(0);
+  const [fee, setFee] = useState(0);
+  const [tip, setTip] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleAdd = (size: DrinkSize) => {
@@ -121,8 +125,9 @@ export const DrinkCalculator = () => {
     }
   };
 
-  const totalAmount =
+  const subtotal =
     halfLiterCount * HALF_LITER_PRICE + oneLiterCount * ONE_LITER_PRICE;
+  const totalAmount = subtotal + fee + tip;
 
   const handleSaveSale = async () => {
     if (totalAmount === 0) {
@@ -151,11 +156,13 @@ export const DrinkCalculator = () => {
         });
       }
 
-      await saveSale(sales);
+      await saveSale(sales, fee, tip);
 
       // Reset counters after successful save
       setHalfLiterCount(0);
       setOneLiterCount(0);
+      setFee(0);
+      setTip(0);
     } catch (error) {
       console.error('Error al guardar la venta:', error);
     } finally {
@@ -226,6 +233,42 @@ export const DrinkCalculator = () => {
                 onSubtract={() => handleSubtract('one')}
               />
             </VStack>
+
+            <VStack space="md">
+              <VStack>
+                <Text color="$black">Cargo adicional</Text>
+                <Input
+                  variant="outline"
+                  size="md"
+                  isDisabled={false}
+                  isInvalid={false}
+                  isReadOnly={false}>
+                  <InputField
+                    keyboardType="numeric"
+                    placeholder="Ingresa el cargo adicional"
+                    value={fee.toString()}
+                    onChangeText={text => setFee(Number(text) || 0)}
+                  />
+                </Input>
+              </VStack>
+
+              <VStack>
+                <Text color="$black">Propina</Text>
+                <Input
+                  variant="outline"
+                  size="md"
+                  isDisabled={false}
+                  isInvalid={false}
+                  isReadOnly={false}>
+                  <InputField
+                    keyboardType="numeric"
+                    placeholder="Ingresa la propina"
+                    value={tip.toString()}
+                    onChangeText={text => setTip(Number(text) || 0)}
+                  />
+                </Input>
+              </VStack>
+            </VStack>
           </Box>
         </ScrollView>
         <Box p="$4">
@@ -254,6 +297,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
+  },
+  input: {
+    width: 96,
+    height: 32,
+    borderWidth: 1,
+    borderColor: 'white',
+    borderRadius: 4,
+    padding: 8,
+    color: 'white',
   },
 });
 

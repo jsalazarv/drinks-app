@@ -11,15 +11,24 @@ interface OrderItem {
   total: number;
 }
 
-export const saveSale = async (items: Omit<OrderItem, 'id' | 'order_id'>[]) => {
+export const saveSale = async (
+  items: Omit<OrderItem, 'id' | 'order_id'>[],
+  fee: number = 0,
+  tip: number = 0,
+) => {
   try {
     // Calcular el total de la orden
-    const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+    const totalAmount = subtotal + fee + tip;
 
     // 1. Crear la orden
     const {data: orderData, error: orderError} = await supabase
       .from('orders')
-      .insert({total_amount: totalAmount})
+      .insert({
+        total_amount: totalAmount,
+        fee: fee,
+        tip: tip,
+      })
       .select()
       .single();
 
