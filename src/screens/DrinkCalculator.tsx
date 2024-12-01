@@ -15,6 +15,8 @@ import {
 import {ScrollView, SafeAreaView, StatusBar, StyleSheet} from 'react-native';
 import {PintGlass} from 'phosphor-react-native';
 import {saveSale, DrinkType} from '../services/sales';
+import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
+import type {RootTabParamList} from '../navigation/AppNavigator';
 
 const HALF_LITER_PRICE = 30;
 const ONE_LITER_PRICE = 50;
@@ -102,7 +104,9 @@ const SizeOption = ({
   );
 };
 
-export const DrinkCalculator = () => {
+type Props = BottomTabScreenProps<RootTabParamList, 'DrinkCalculator'>;
+
+export const DrinkCalculator = ({navigation}: Props) => {
   const [halfLiterCount, setHalfLiterCount] = useState(0);
   const [oneLiterCount, setOneLiterCount] = useState(0);
   const [fee, setFee] = useState(0);
@@ -297,15 +301,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
-  },
-  input: {
-    width: 96,
-    height: 32,
-    borderWidth: 1,
-    borderColor: 'white',
-    borderRadius: 4,
-    padding: 8,
-    color: 'white',
   },
 });
 
