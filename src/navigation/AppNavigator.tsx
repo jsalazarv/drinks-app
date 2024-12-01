@@ -5,18 +5,39 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import DrinkCalculator from '../screens/DrinkCalculator';
 import OrderHistory from '../screens/OrderHistory';
 import OrderDetail from '../screens/OrderDetail';
-import {House, ClockCounterClockwise} from 'phosphor-react-native';
+import Cashouts from '../screens/Cashouts';
+import {Calculator, ClockCounterClockwise, Money} from 'phosphor-react-native';
 import {MainStackParamList, RootTabParamList} from './types';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
+const OrderStack = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="OrderHistory"
+        component={OrderHistory}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="OrderDetail"
+        component={OrderDetail}
+        options={{
+          headerTitle: 'Detalle de Orden',
+          headerBackTitle: 'Volver',
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
 const TabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#000',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: '#000000',
+        tabBarInactiveTintColor: '#666666',
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
@@ -37,19 +58,29 @@ const TabNavigator = () => {
         name="DrinkCalculator"
         component={DrinkCalculator}
         options={{
-          title: 'Inicio',
+          tabBarLabel: 'Calculadora',
           tabBarIcon: ({color, size}) => (
-            <House size={size} color={color} weight="bold" />
+            <Calculator color={color} size={size} weight="bold" />
           ),
         }}
       />
       <Tab.Screen
         name="OrderHistory"
-        component={OrderHistory}
+        component={OrderStack}
         options={{
-          title: 'Historial',
+          tabBarLabel: 'Historial',
           tabBarIcon: ({color, size}) => (
-            <ClockCounterClockwise size={size} color={color} weight="bold" />
+            <ClockCounterClockwise color={color} size={size} weight="bold" />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Cashouts"
+        component={Cashouts}
+        options={{
+          tabBarLabel: 'Cortes',
+          tabBarIcon: ({color, size}) => (
+            <Money color={color} size={size} weight="bold" />
           ),
         }}
       />
@@ -60,18 +91,7 @@ const TabNavigator = () => {
 export const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen
-          name="Main"
-          component={TabNavigator}
-          options={{headerShown: false}}
-        />
-        <Stack.Screen
-          name="OrderDetail"
-          component={OrderDetail}
-          options={{title: 'Detalle de Orden'}}
-        />
-      </Stack.Navigator>
+      <TabNavigator />
     </NavigationContainer>
   );
 };
