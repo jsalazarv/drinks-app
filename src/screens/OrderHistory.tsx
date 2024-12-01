@@ -7,22 +7,27 @@ import {
   ScrollView,
   Divider,
   Spinner,
+  Pressable,
 } from '@gluestack-ui/themed';
 import {SafeAreaView, StyleSheet} from 'react-native';
-import {getOrders, Order} from '../services/sales';
+import {getOrders, Order, subscribeToOrders} from '../services/sales';
+import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
+import type {CompositeScreenProps} from '@react-navigation/native';
+import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import type {MainStackParamList, RootTabParamList} from '../navigation/types';
 
-export const OrderHistory = () => {
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<RootTabParamList, 'OrderHistory'>,
+  NativeStackScreenProps<MainStackParamList>
+>;
+
+export const OrderHistory = ({navigation}: Props) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
   const loadOrders = async () => {
     try {
-      setLoading(true);
       setError(null);
       const data = await getOrders();
       setOrders(data);
@@ -33,6 +38,20 @@ export const OrderHistory = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadOrders();
+
+    // Suscribirse a cambios en tiempo real
+    const unsubscribe = subscribeToOrders(updatedOrders => {
+      setOrders(updatedOrders);
+    });
+
+    // Limpiar suscripción al desmontar
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -71,66 +90,71 @@ export const OrderHistory = () => {
 
           <VStack space="md">
             {orders.map(order => (
-              <Box
+              <Pressable
                 key={order.id}
-                bg="$white"
-                borderRadius="$lg"
-                borderWidth={1}
-                borderColor="$gray200"
-                p="$4">
-                <VStack space="sm">
-                  <HStack justifyContent="space-between">
-                    <Text fontSize="$sm" color="$gray600">
-                      {formatDate(order.created_at)}
-                    </Text>
-                    <Text fontWeight="$bold" color="$black">
-                      #{order.id}
-                    </Text>
-                  </HStack>
-
-                  <Divider my="$2" />
-
-                  {order.items?.map(item => (
-                    <HStack
-                      key={item.id}
-                      justifyContent="space-between"
-                      py="$1">
-                      <Text>
-                        {item.drink_type === 'half'
-                          ? 'Medio Litro'
-                          : 'Un Litro'}{' '}
-                        × {item.count}
+                onPress={() =>
+                  navigation.navigate('OrderDetail', {orderId: order.id})
+                }>
+                <Box
+                  bg="$white"
+                  borderRadius="$lg"
+                  borderWidth={1}
+                  borderColor="$gray200"
+                  p="$4">
+                  <VStack space="sm">
+                    <HStack justifyContent="space-between">
+                      <Text fontSize="$sm" color="$gray600">
+                        {formatDate(order.created_at)}
                       </Text>
-                      <Text>${item.total}</Text>
+                      <Text fontWeight="$bold" color="$black">
+                        #{order.id}
+                      </Text>
                     </HStack>
-                  ))}
 
-                  <Divider my="$2" />
+                    <Divider my="$2" />
 
-                  {order.fee > 0 && (
-                    <HStack justifyContent="space-between">
-                      <Text>Cargo adicional</Text>
-                      <Text>${order.fee}</Text>
+                    {order.items?.map(item => (
+                      <HStack
+                        key={item.id}
+                        justifyContent="space-between"
+                        py="$1">
+                        <Text>
+                          {item.drink_type === 'half'
+                            ? 'Medio Litro'
+                            : 'Un Litro'}{' '}
+                          × {item.count}
+                        </Text>
+                        <Text>${item.total}</Text>
+                      </HStack>
+                    ))}
+
+                    <Divider my="$2" />
+
+                    {order.fee > 0 && (
+                      <HStack justifyContent="space-between">
+                        <Text>Cargo adicional</Text>
+                        <Text>${order.fee}</Text>
+                      </HStack>
+                    )}
+
+                    {order.tip > 0 && (
+                      <HStack justifyContent="space-between">
+                        <Text>Propina</Text>
+                        <Text>${order.tip}</Text>
+                      </HStack>
+                    )}
+
+                    <HStack justifyContent="space-between" mt="$2">
+                      <Text fontSize="$lg" fontWeight="$medium">
+                        Total
+                      </Text>
+                      <Text fontSize="$xl" fontWeight="$bold">
+                        ${order.total_amount}
+                      </Text>
                     </HStack>
-                  )}
-
-                  {order.tip > 0 && (
-                    <HStack justifyContent="space-between">
-                      <Text>Propina</Text>
-                      <Text>${order.tip}</Text>
-                    </HStack>
-                  )}
-
-                  <HStack justifyContent="space-between" mt="$2">
-                    <Text fontSize="$lg" fontWeight="$medium">
-                      Total
-                    </Text>
-                    <Text fontSize="$xl" fontWeight="$bold">
-                      ${order.total_amount}
-                    </Text>
-                  </HStack>
-                </VStack>
-              </Box>
+                  </VStack>
+                </Box>
+              </Pressable>
             ))}
           </VStack>
         </Box>
