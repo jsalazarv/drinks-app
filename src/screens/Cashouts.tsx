@@ -9,18 +9,34 @@ import {
   ButtonText,
   Spinner,
   Divider,
+  AlertDialog,
+  AlertDialogBackdrop,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
+  ButtonGroup,
+  Pressable,
 } from '@gluestack-ui/themed';
 import {SafeAreaView, StyleSheet, Alert} from 'react-native';
-import {generateCashout, getCashouts, Cashout} from '../services/cashouts';
-import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
-import type {RootTabParamList} from '../navigation/types';
-
-type Props = BottomTabScreenProps<RootTabParamList, 'Cashouts'>;
+import {
+  generateCashout,
+  getCashouts,
+  deleteCashout,
+  Cashout,
+} from '../services/cashouts';
+import {Trash} from 'phosphor-react-native';
+import {formatDisplayDate} from '../utils/date';
 
 export const Cashouts = () => {
   const [cashouts, setCashouts] = useState<Cashout[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [selectedCashoutId, setSelectedCashoutId] = useState<number | null>(
+    null,
+  );
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const loadCashouts = async () => {
     try {
@@ -54,15 +70,32 @@ export const Cashouts = () => {
     }
   };
 
+  const handleDeletePress = (cashoutId: number) => {
+    setSelectedCashoutId(cashoutId);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedCashoutId) {
+      return;
+    }
+
+    setDeleting(true);
+    setShowDeleteDialog(false);
+    try {
+      await deleteCashout(selectedCashoutId);
+      loadCashouts();
+      Alert.alert('Éxito', 'Corte de caja eliminado correctamente');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo eliminar el corte de caja');
+    } finally {
+      setDeleting(false);
+      setSelectedCashoutId(null);
+    }
+  };
+
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('es-MX', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatDisplayDate(dateString);
   };
 
   if (loading) {
@@ -84,7 +117,7 @@ export const Cashouts = () => {
               </Text>
               <Button
                 onPress={handleGenerateCashout}
-                isDisabled={generating}
+                isDisabled={generating || deleting}
                 bg="$black">
                 <ButtonText>
                   {generating ? 'Generando...' : 'Nuevo Corte'}
@@ -102,11 +135,24 @@ export const Cashouts = () => {
                   borderColor="$gray200"
                   p="$4">
                   <VStack space="sm">
-                    <HStack justifyContent="space-between">
-                      <Text fontSize="$lg" fontWeight="$bold">
-                        Corte Diario
-                      </Text>
-                      <Text color="$gray600">#{cashout.id}</Text>
+                    <HStack justifyContent="space-between" alignItems="center">
+                      <HStack space="md" alignItems="center">
+                        <Text fontSize="$lg" fontWeight="$bold">
+                          Corte Diario
+                        </Text>
+                        <Text color="$gray600">#{cashout.id}</Text>
+                      </HStack>
+                      <Pressable
+                        onPress={() => handleDeletePress(cashout.id)}
+                        disabled={deleting}
+                        style={({pressed}) => [
+                          {
+                            opacity: pressed || deleting ? 0.5 : 1,
+                            padding: 8,
+                          },
+                        ]}>
+                        <Trash size={24} color="#ef4444" weight="bold" />
+                      </Pressable>
                     </HStack>
 
                     <Divider my="$2" />
@@ -137,6 +183,38 @@ export const Cashouts = () => {
           </VStack>
         </Box>
       </ScrollView>
+
+      <AlertDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}>
+        <AlertDialogBackdrop />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <Text fontSize="$lg" fontWeight="$bold">
+              Confirmar Eliminación
+            </Text>
+          </AlertDialogHeader>
+          <AlertDialogBody>
+            <Text>
+              ¿Estás seguro que deseas eliminar este corte de caja? Esta acción
+              no se puede deshacer.
+            </Text>
+          </AlertDialogBody>
+          <AlertDialogFooter>
+            <ButtonGroup space="md">
+              <Button
+                variant="outline"
+                onPress={() => setShowDeleteDialog(false)}
+                borderColor="$black">
+                <ButtonText color="$black">Cancelar</ButtonText>
+              </Button>
+              <Button bg="$red500" onPress={handleDeleteConfirm}>
+                <ButtonText>Eliminar</ButtonText>
+              </Button>
+            </ButtonGroup>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SafeAreaView>
   );
 };

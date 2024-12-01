@@ -19,50 +19,77 @@ export interface Cashout {
   orders?: OrderItem[];
 }
 
-const getLastCashoutDate = async (): Promise<string> => {
-  const {data: lastCashout} = await supabase
-    .from('cashouts')
-    .select('end_date')
-    .order('end_date', {ascending: false})
-    .limit(1)
-    .single();
+const getLastCashoutDate = async (): Promise<string | null> => {
+  try {
+    // Obtener el último corte
+    const {data: lastCashout, error: lastCashoutError} = await supabase
+      .from('cashouts')
+      .select('end_date')
+      .order('end_date', {ascending: false})
+      .limit(1)
+      .single();
 
-  return lastCashout?.end_date || new Date(0).toISOString();
+    console.log('Last cashout query result:', {lastCashout, lastCashoutError});
+
+    if (lastCashout?.end_date) {
+      return lastCashout.end_date;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error in getLastCashoutDate:', error);
+    return null;
+  }
 };
 
 const getPendingOrders = async (
-  startDate: string,
-  endDate: string,
+  lastCashoutDate: string | null,
 ): Promise<OrderItem[]> => {
-  // 1. Obtener los IDs de órdenes ya incluidas en cortes
-  const {data: orderIds} = await supabase
-    .from('cashouts_orders')
-    .select('order_id');
+  try {
+    // 1. Obtener los IDs de órdenes ya incluidas en cortes
+    const {data: orderIds, error: orderIdsError} = await supabase
+      .from('cashouts_orders')
+      .select('order_id');
 
-  // 2. Obtener órdenes no incluidas en cortes
-  let query = supabase
-    .from('orders')
-    .select('id, total_amount, created_at')
-    .gte('created_at', startDate)
-    .lte('created_at', endDate);
+    console.log('Existing cashout orders:', {orderIds, orderIdsError});
 
-  // Solo aplicar el filtro not in si hay órdenes existentes
-  if (orderIds && orderIds.length > 0) {
-    const ids = orderIds.map(item => item.order_id);
-    query = query.filter('id', 'not.in', `(${ids.join(',')})`);
-  }
+    // 2. Construir la consulta base
+    const query = supabase
+      .from('orders')
+      .select('id, total_amount, created_at')
+      .order('created_at', {ascending: true});
 
-  const {data: orders, error} = await query;
+    // 3. Si hay un último corte, filtrar desde esa fecha
+    if (lastCashoutDate) {
+      query.gt('created_at', lastCashoutDate);
+    }
 
-  if (error) {
+    // 4. Excluir órdenes ya incluidas en cortes
+    if (orderIds && orderIds.length > 0) {
+      const ids = orderIds.map(item => item.order_id);
+      query.not('id', 'in', ids);
+    }
+
+    const {data: orders, error: ordersError} = await query;
+
+    console.log('Pending orders query result:', {
+      orders,
+      ordersError,
+    });
+
+    if (ordersError) {
+      throw ordersError;
+    }
+
+    if (!orders || orders.length === 0) {
+      throw new Error('No hay órdenes nuevas para generar el corte');
+    }
+
+    return orders;
+  } catch (error) {
+    console.error('Error in getPendingOrders:', error);
     throw error;
   }
-
-  if (!orders || orders.length === 0) {
-    throw new Error('No hay órdenes nuevas para generar el corte');
-  }
-
-  return orders;
 };
 
 const createCashoutRecord = async (
@@ -72,37 +99,63 @@ const createCashoutRecord = async (
   startDate: string,
   endDate: string,
 ): Promise<Cashout> => {
-  const {data: cashout, error} = await supabase
-    .from('cashouts')
-    .insert({
+  try {
+    console.log('Creating cashout record:', {
       type,
-      total_amount: totalAmount,
-      total_orders: totalOrders,
-      start_date: startDate,
-      end_date: endDate,
-    })
-    .select()
-    .single();
+      totalAmount,
+      totalOrders,
+      startDate,
+      endDate,
+    });
 
-  if (error) {
+    const {data: cashout, error} = await supabase
+      .from('cashouts')
+      .insert({
+        type,
+        total_amount: totalAmount,
+        total_orders: totalOrders,
+        start_date: startDate,
+        end_date: endDate,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return cashout;
+  } catch (error) {
+    console.error('Error in createCashoutRecord:', error);
     throw error;
   }
-
-  return cashout;
 };
 
 const linkOrdersToCashout = async (
   cashoutId: number,
   orders: OrderItem[],
 ): Promise<void> => {
-  const cashoutOrders = orders.map(order => ({
-    cashout_id: cashoutId,
-    order_id: order.id,
-  }));
+  try {
+    const cashoutOrders = orders.map(order => ({
+      cashout_id: cashoutId,
+      order_id: order.id,
+    }));
 
-  const {error} = await supabase.from('cashouts_orders').insert(cashoutOrders);
+    console.log('Linking orders to cashout:', {
+      cashoutId,
+      orderCount: orders.length,
+      cashoutOrders,
+    });
 
-  if (error) {
+    const {error} = await supabase
+      .from('cashouts_orders')
+      .insert(cashoutOrders);
+
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error in linkOrdersToCashout:', error);
     throw error;
   }
 };
@@ -110,19 +163,29 @@ const linkOrdersToCashout = async (
 export const generateCashout = async (type: CashoutType): Promise<Cashout> => {
   try {
     // 1. Obtener la fecha del último corte
-    const startDate = await getLastCashoutDate();
-    const endDate = new Date().toISOString();
+    const lastCashoutDate = await getLastCashoutDate();
 
     // 2. Obtener órdenes pendientes
-    const orders = await getPendingOrders(startDate, endDate);
+    const orders = await getPendingOrders(lastCashoutDate);
 
-    // 3. Calcular totales
+    // 3. Usar la primera y última fecha de las órdenes como rango
+    const startDate = orders[0].created_at;
+    const endDate = orders[orders.length - 1].created_at;
+
+    console.log('Generating cashout with dates:', {
+      lastCashoutDate,
+      startDate,
+      endDate,
+      ordersCount: orders.length,
+    });
+
+    // 4. Calcular totales
     const totalAmount = orders.reduce(
       (sum, order) => sum + order.total_amount,
       0,
     );
 
-    // 4. Crear el corte de caja
+    // 5. Crear el corte de caja
     const cashout = await createCashoutRecord(
       type,
       totalAmount,
@@ -131,7 +194,7 @@ export const generateCashout = async (type: CashoutType): Promise<Cashout> => {
       endDate,
     );
 
-    // 5. Relacionar órdenes con el corte
+    // 6. Relacionar órdenes con el corte
     await linkOrdersToCashout(cashout.id, orders);
 
     return {
@@ -200,6 +263,33 @@ export const getCashouts = async (): Promise<Cashout[]> => {
     return cashoutsWithOrders;
   } catch (error) {
     console.error('Error fetching cashouts:', error);
+    throw error;
+  }
+};
+
+export const deleteCashout = async (cashoutId: number): Promise<void> => {
+  try {
+    // 1. Eliminar las relaciones en cashouts_orders
+    const {error: relationsError} = await supabase
+      .from('cashouts_orders')
+      .delete()
+      .eq('cashout_id', cashoutId);
+
+    if (relationsError) {
+      throw relationsError;
+    }
+
+    // 2. Eliminar el corte de caja
+    const {error: cashoutError} = await supabase
+      .from('cashouts')
+      .delete()
+      .eq('id', cashoutId);
+
+    if (cashoutError) {
+      throw cashoutError;
+    }
+  } catch (error) {
+    console.error('Error deleting cashout:', error);
     throw error;
   }
 };
