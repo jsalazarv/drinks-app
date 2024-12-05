@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useMemo} from 'react';
 import {
   Box,
   Text,
@@ -50,6 +50,20 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [updatingPayment, setUpdatingPayment] = useState<number | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'paid' | 'unpaid'>(
+    'all',
+  );
+
+  const filteredOrders = useMemo(() => {
+    switch (activeFilter) {
+      case 'paid':
+        return orders.filter(order => order.is_paid);
+      case 'unpaid':
+        return orders.filter(order => !order.is_paid);
+      default:
+        return orders;
+    }
+  }, [orders, activeFilter]);
 
   const loadOrders = async () => {
     try {
@@ -146,8 +160,42 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
             Historial de Órdenes
           </Text>
 
+          <HStack space="sm" mb="$4">
+            <Button
+              variant={activeFilter === 'all' ? 'solid' : 'outline'}
+              bg={activeFilter === 'all' ? '$black' : 'transparent'}
+              borderColor="$black"
+              onPress={() => setActiveFilter('all')}
+              flex={1}>
+              <ButtonText color={activeFilter === 'all' ? '$white' : '$black'}>
+                Todos
+              </ButtonText>
+            </Button>
+            <Button
+              variant={activeFilter === 'paid' ? 'solid' : 'outline'}
+              bg={activeFilter === 'paid' ? '$black' : 'transparent'}
+              borderColor="$black"
+              onPress={() => setActiveFilter('paid')}
+              flex={1}>
+              <ButtonText color={activeFilter === 'paid' ? '$white' : '$black'}>
+                Pagadas
+              </ButtonText>
+            </Button>
+            <Button
+              variant={activeFilter === 'unpaid' ? 'solid' : 'outline'}
+              bg={activeFilter === 'unpaid' ? '$black' : 'transparent'}
+              borderColor="$black"
+              onPress={() => setActiveFilter('unpaid')}
+              flex={1}>
+              <ButtonText
+                color={activeFilter === 'unpaid' ? '$white' : '$black'}>
+                Sin pagar
+              </ButtonText>
+            </Button>
+          </HStack>
+
           <VStack space="md">
-            {orders.map(order => (
+            {filteredOrders.map(order => (
               <Pressable
                 key={order.id}
                 onPress={() =>
@@ -181,11 +229,19 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
                           onChange={newValue =>
                             handlePaymentToggle(order.id, newValue)
                           }
-                          aria-label={order.is_paid ? 'Pagada' : 'Sin pagar'}>
+                          aria-label={order.is_paid ? 'Pagada' : 'Sin pagar'}
+                          sx={{
+                            _checked: {
+                              bg: '$black',
+                              borderColor: '$black',
+                              _icon: {color: '$white'},
+                            },
+                          }}>
                           <CheckboxIndicator mr="$2">
                             <CheckboxIcon as={CheckIcon} />
                           </CheckboxIndicator>
-                          <CheckboxLabel>
+                          <CheckboxLabel
+                            color={order.is_paid ? '$black' : '$gray600'}>
                             {order.is_paid ? 'Pagada' : 'Sin pagar'}
                           </CheckboxLabel>
                         </Checkbox>
