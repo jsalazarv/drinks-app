@@ -21,7 +21,7 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<MainStackParamList>
 >;
 
-export const OrderHistory = ({navigation}: Props) => {
+const OrderHistory: React.FC<Props> = ({navigation}) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

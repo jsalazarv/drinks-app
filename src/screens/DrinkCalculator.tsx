@@ -15,8 +15,6 @@ import {
 import {ScrollView, SafeAreaView, StatusBar, StyleSheet} from 'react-native';
 import {PintGlass} from 'phosphor-react-native';
 import {saveSale, DrinkType} from '../services/sales';
-import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
-import type {RootTabParamList} from '../navigation/AppNavigator';
 
 const HALF_LITER_PRICE = 30;
 const ONE_LITER_PRICE = 50;
@@ -104,9 +102,7 @@ const SizeOption = ({
   );
 };
 
-type Props = BottomTabScreenProps<RootTabParamList, 'DrinkCalculator'>;
-
-export const DrinkCalculator = ({navigation}: Props) => {
+export const DrinkCalculator = () => {
   const [halfLiterCount, setHalfLiterCount] = useState(0);
   const [oneLiterCount, setOneLiterCount] = useState(0);
   const [fee, setFee] = useState(0);

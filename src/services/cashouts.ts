@@ -67,7 +67,7 @@ const getPendingOrders = async (
     // 4. Excluir órdenes ya incluidas en cortes
     if (orderIds && orderIds.length > 0) {
       const ids = orderIds.map(item => item.order_id);
-      query.not('id', 'in', ids);
+      query.not('id', 'in', `(${ids.join(',')})`);
     }
 
     const {data: orders, error: ordersError} = await query;
@@ -167,6 +167,11 @@ export const generateCashout = async (type: CashoutType): Promise<Cashout> => {
 
     // 2. Obtener órdenes pendientes
     const orders = await getPendingOrders(lastCashoutDate);
+
+    // Validar si hay órdenes pendientes
+    if (orders.length === 0) {
+      throw new Error('No hay órdenes pendientes para generar el corte');
+    }
 
     // 3. Usar la primera y última fecha de las órdenes como rango
     const startDate = orders[0].created_at;

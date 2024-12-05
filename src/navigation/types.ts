@@ -5,7 +5,7 @@ export type RootTabParamList = {
 };
 
 export type MainStackParamList = {
-  Main: undefined;
+  OrderHistory: undefined;
   OrderDetail: {
     orderId: number;
   };

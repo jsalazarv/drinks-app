@@ -32,6 +32,18 @@ const OrderStack = () => {
   );
 };
 
+const DrinkCalculatorIcon = ({color, size}: {color: string; size: number}) => (
+  <Calculator color={color} size={size} weight="bold" />
+);
+
+const OrderHistoryIcon = ({color, size}: {color: string; size: number}) => (
+  <ClockCounterClockwise color={color} size={size} weight="bold" />
+);
+
+const CashoutsIcon = ({color, size}: {color: string; size: number}) => (
+  <Money color={color} size={size} weight="bold" />
+);
+
 const TabNavigator = () => {
   return (
     <Tab.Navigator
@@ -59,9 +71,7 @@ const TabNavigator = () => {
         component={DrinkCalculator}
         options={{
           tabBarLabel: 'Calculadora',
-          tabBarIcon: ({color, size}) => (
-            <Calculator color={color} size={size} weight="bold" />
-          ),
+          tabBarIcon: DrinkCalculatorIcon,
         }}
       />
       <Tab.Screen
@@ -69,9 +79,7 @@ const TabNavigator = () => {
         component={OrderStack}
         options={{
           tabBarLabel: 'Historial',
-          tabBarIcon: ({color, size}) => (
-            <ClockCounterClockwise color={color} size={size} weight="bold" />
-          ),
+          tabBarIcon: OrderHistoryIcon,
         }}
       />
       <Tab.Screen
@@ -79,9 +87,7 @@ const TabNavigator = () => {
         component={Cashouts}
         options={{
           tabBarLabel: 'Cortes',
-          tabBarIcon: ({color, size}) => (
-            <Money color={color} size={size} weight="bold" />
-          ),
+          tabBarIcon: CashoutsIcon,
         }}
       />
     </Tab.Navigator>
