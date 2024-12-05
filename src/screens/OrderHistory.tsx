@@ -17,6 +17,11 @@ import {
   ButtonGroup,
   Button,
   ButtonText,
+  Checkbox,
+  CheckboxIndicator,
+  CheckboxIcon,
+  CheckIcon,
+  CheckboxLabel,
 } from '@gluestack-ui/themed';
 import {SafeAreaView, StyleSheet, Alert} from 'react-native';
 import {
@@ -24,6 +29,7 @@ import {
   Order,
   subscribeToOrders,
   deleteOrder,
+  updateOrderPaymentStatus,
 } from '../services/sales';
 import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
 import type {CompositeScreenProps} from '@react-navigation/native';
@@ -43,6 +49,7 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [updatingPayment, setUpdatingPayment] = useState<number | null>(null);
 
   const loadOrders = async () => {
     try {
@@ -60,12 +67,10 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
   useEffect(() => {
     loadOrders();
 
-    // Suscribirse a cambios en tiempo real
     const unsubscribe = subscribeToOrders(updatedOrders => {
       setOrders(updatedOrders);
     });
 
-    // Limpiar suscripción al desmontar
     return () => {
       unsubscribe();
     };
@@ -87,11 +92,22 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
     try {
       await deleteOrder(selectedOrderId);
       Alert.alert('Éxito', 'Orden eliminada correctamente');
-    } catch (error) {
+    } catch (deleteError) {
       Alert.alert('Error', 'No se pudo eliminar la orden');
     } finally {
       setDeleting(false);
       setSelectedOrderId(null);
+    }
+  };
+
+  const handlePaymentToggle = async (orderId: number, newStatus: boolean) => {
+    setUpdatingPayment(orderId);
+    try {
+      await updateOrderPaymentStatus(orderId, newStatus);
+    } catch (err) {
+      Alert.alert('Error', 'No se pudo actualizar el estado de pago');
+    } finally {
+      setUpdatingPayment(null);
     }
   };
 
@@ -144,8 +160,11 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
                   borderColor="$gray200"
                   p="$4">
                   <VStack space="sm">
-                    <HStack justifyContent="space-between" alignItems="center">
-                      <HStack space="md" alignItems="center">
+                    <HStack
+                      justifyContent="space-between"
+                      alignItems="center"
+                      mb="$2">
+                      <HStack space="md" alignItems="center" flex={1}>
                         <Text fontSize="$sm" color="$gray600">
                           {formatDate(order.created_at)}
                         </Text>
@@ -153,17 +172,35 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
                           #{order.id}
                         </Text>
                       </HStack>
-                      <Pressable
-                        onPress={() => handleDeletePress(order.id)}
-                        disabled={deleting}
-                        style={({pressed}) => [
-                          {
-                            opacity: pressed || deleting ? 0.5 : 1,
-                            padding: 8,
-                          },
-                        ]}>
-                        <Trash size={24} color="#ef4444" weight="bold" />
-                      </Pressable>
+                      <HStack space="md" alignItems="center">
+                        <Checkbox
+                          size="md"
+                          value={order.id.toString()}
+                          isChecked={order.is_paid}
+                          isDisabled={updatingPayment === order.id}
+                          onChange={newValue =>
+                            handlePaymentToggle(order.id, newValue)
+                          }
+                          aria-label={order.is_paid ? 'Pagada' : 'Sin pagar'}>
+                          <CheckboxIndicator mr="$2">
+                            <CheckboxIcon as={CheckIcon} />
+                          </CheckboxIndicator>
+                          <CheckboxLabel>
+                            {order.is_paid ? 'Pagada' : 'Sin pagar'}
+                          </CheckboxLabel>
+                        </Checkbox>
+                        <Pressable
+                          onPress={() => handleDeletePress(order.id)}
+                          disabled={deleting}
+                          style={({pressed}) => [
+                            {
+                              opacity: pressed || deleting ? 0.5 : 1,
+                              padding: 8,
+                            },
+                          ]}>
+                          <Trash size={24} color="#ef4444" weight="bold" />
+                        </Pressable>
+                      </HStack>
                     </HStack>
 
                     <Divider my="$2" />

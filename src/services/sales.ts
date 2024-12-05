@@ -14,11 +14,12 @@ export interface OrderItem {
 
 export interface Order {
   id: number;
+  created_at: string;
+  items: OrderItem[];
   total_amount: number;
   fee: number;
   tip: number;
-  created_at: string;
-  items?: OrderItem[];
+  is_paid: boolean;
 }
 
 let ordersSubscription: RealtimeChannel | null = null;
@@ -266,8 +267,27 @@ export const deleteOrder = async (orderId: number): Promise<void> => {
     if (orderError) {
       throw orderError;
     }
-  } catch (error) {
-    console.error('Error deleting order:', error);
-    throw error;
+  } catch (err) {
+    console.error('Error deleting order:', err);
+    throw err;
+  }
+};
+
+export const updateOrderPaymentStatus = async (
+  orderId: number,
+  isPaid: boolean,
+): Promise<void> => {
+  try {
+    const {error} = await supabase
+      .from('orders')
+      .update({is_paid: isPaid})
+      .eq('id', orderId);
+
+    if (error) {
+      throw error;
+    }
+  } catch (err) {
+    console.error('Error updating order payment status:', err);
+    throw err;
   }
 };
