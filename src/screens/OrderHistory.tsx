@@ -8,13 +8,28 @@ import {
   Divider,
   Spinner,
   Pressable,
+  AlertDialog,
+  AlertDialogBackdrop,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
+  ButtonGroup,
+  Button,
+  ButtonText,
 } from '@gluestack-ui/themed';
-import {SafeAreaView, StyleSheet} from 'react-native';
-import {getOrders, Order, subscribeToOrders} from '../services/sales';
+import {SafeAreaView, StyleSheet, Alert} from 'react-native';
+import {
+  getOrders,
+  Order,
+  subscribeToOrders,
+  deleteOrder,
+} from '../services/sales';
 import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
 import type {CompositeScreenProps} from '@react-navigation/native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {MainStackParamList, RootTabParamList} from '../navigation/types';
+import {Trash} from 'phosphor-react-native';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<RootTabParamList, 'OrderHistory'>,
@@ -25,6 +40,9 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadOrders = async () => {
     try {
@@ -52,6 +70,30 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
       unsubscribe();
     };
   }, []);
+
+  const handleDeletePress = (orderId: number) => {
+    setSelectedOrderId(orderId);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedOrderId) {
+      return;
+    }
+
+    setDeleting(true);
+    setShowDeleteDialog(false);
+
+    try {
+      await deleteOrder(selectedOrderId);
+      Alert.alert('Éxito', 'Orden eliminada correctamente');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo eliminar la orden');
+    } finally {
+      setDeleting(false);
+      setSelectedOrderId(null);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -102,13 +144,26 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
                   borderColor="$gray200"
                   p="$4">
                   <VStack space="sm">
-                    <HStack justifyContent="space-between">
-                      <Text fontSize="$sm" color="$gray600">
-                        {formatDate(order.created_at)}
-                      </Text>
-                      <Text fontWeight="$bold" color="$black">
-                        #{order.id}
-                      </Text>
+                    <HStack justifyContent="space-between" alignItems="center">
+                      <HStack space="md" alignItems="center">
+                        <Text fontSize="$sm" color="$gray600">
+                          {formatDate(order.created_at)}
+                        </Text>
+                        <Text fontWeight="$bold" color="$black">
+                          #{order.id}
+                        </Text>
+                      </HStack>
+                      <Pressable
+                        onPress={() => handleDeletePress(order.id)}
+                        disabled={deleting}
+                        style={({pressed}) => [
+                          {
+                            opacity: pressed || deleting ? 0.5 : 1,
+                            padding: 8,
+                          },
+                        ]}>
+                        <Trash size={24} color="#ef4444" weight="bold" />
+                      </Pressable>
                     </HStack>
 
                     <Divider my="$2" />
@@ -159,6 +214,39 @@ const OrderHistory: React.FC<Props> = ({navigation}) => {
           </VStack>
         </Box>
       </ScrollView>
+
+      <AlertDialog isOpen={showDeleteDialog}>
+        <AlertDialogBackdrop />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <Text size="lg" fontWeight="$bold">
+              Eliminar Orden
+            </Text>
+          </AlertDialogHeader>
+          <AlertDialogBody>
+            <Text size="sm">
+              ¿Estás seguro que deseas eliminar esta orden? Esta acción no se
+              puede deshacer.
+            </Text>
+          </AlertDialogBody>
+          <AlertDialogFooter>
+            <ButtonGroup space="lg">
+              <Button
+                variant="outline"
+                action="secondary"
+                onPress={() => setShowDeleteDialog(false)}>
+                <ButtonText>Cancelar</ButtonText>
+              </Button>
+              <Button
+                bg="$red500"
+                action="negative"
+                onPress={handleDeleteConfirm}>
+                <ButtonText>Eliminar</ButtonText>
+              </Button>
+            </ButtonGroup>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SafeAreaView>
   );
 };

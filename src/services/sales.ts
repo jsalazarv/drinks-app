@@ -244,3 +244,30 @@ export const getOrders = async (): Promise<Order[]> => {
     throw error;
   }
 };
+
+export const deleteOrder = async (orderId: number): Promise<void> => {
+  try {
+    // First, delete the order items
+    const {error: itemsError} = await supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', orderId);
+
+    if (itemsError) {
+      throw itemsError;
+    }
+
+    // Then, delete the order itself
+    const {error: orderError} = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (orderError) {
+      throw orderError;
+    }
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    throw error;
+  }
+};
